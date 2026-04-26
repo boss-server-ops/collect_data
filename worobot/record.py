@@ -230,6 +230,15 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             display_data=cfg.display_data,
         )
 
+        # Send master + slave arms to zero if the driver supports it.
+        # Runs after BOTH save and discard (kai0-style pedal flow).
+        if hasattr(robot, "go_home") and callable(robot.go_home):
+            log_say("Robot homing", cfg.play_sounds)
+            try:
+                robot.go_home()
+            except Exception as e:
+                logging.warning(f"robot.go_home() failed: {e}")
+
         if not events["stop_recording"] and (
             (recorded_episodes < cfg.dataset.num_episodes - 1) or events["rerecord_episode"]
         ):

@@ -16,6 +16,7 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float32
+from std_srvs.srv import Trigger
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -289,4 +290,63 @@ class PiperRobot(Robot, Node):
         result = {f"{motor}.pos": val for motor, val in goal_pos.items()}
 
         return result
+
+    def go_home(self, settle_time: float = 3.0, srv_timeout: float = 2.0) -> None:
+        """Move both master and slave arms to zero pose.
+
+        Tries ROS2 services /can_{left,right}/go_zero_master_slave first
+        (kai0-style — homes both master and slave simultaneously). If those
+        services are unavailable, falls back to publishing a zero JointState
+        on /piper/sent_actions (slave-only, master stays put).
+
+        After service success, restores master-slave coupling mode via
+        /can_{left,right}/restore_ms_mode so teleop continues to work.
+        """
+        if not self._is_connected:
+            logger.warning("go_home called while disconnected; skipping")
+            return
+
+        used_service = True
+        for srv_name in ("/can_left/go_zero_master_slave", "/can_right/go_zero_master_slave"):
+            client = self.create_client(Trigger, srv_name)
+            if not client.wait_for_service(timeout_sec=srv_timeout):
+                logger.warning(f"go_home: service {srv_name} not available")
+                used_service = False
+                self.destroy_client(client)
+                continue
+            future = client.call_async(Trigger.Request())
+            rclpy.spin_until_future_complete(self, future, timeout_sec=settle_time)
+            if future.done():
+                resp = future.result()
+                if resp is not None and not resp.success:
+                    logger.warning(f"go_home: {srv_name} returned success=False ({resp.message})")
+            else:
+                logger.warning(f"go_home: {srv_name} timed out")
+            self.destroy_client(client)
+
+        if used_service:
+            time.sleep(settle_time)
+            for srv_name in ("/can_left/restore_ms_mode", "/can_right/restore_ms_mode"):
+                client = self.create_client(Trigger, srv_name)
+                if client.wait_for_service(timeout_sec=srv_timeout):
+                    future = client.call_async(Trigger.Request())
+                    rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+                self.destroy_client(client)
+            logger.info("go_home: arms homed via service, master-slave mode restored")
+            return
+
+        # Fallback: publish zero position on the action channel (slave only)
+        if self.action_publisher is None:
+            logger.warning(
+                "go_home fallback unavailable: action_publisher is None "
+                "(robot constructed in teleop mode). Master-slave service is required."
+            )
+            return
+        msg = JointState()
+        msg.name = list(self.motors)
+        msg.position = [0.0] * len(self.motors)
+        msg.header.stamp = self.get_clock().now().to_msg()
+        self.action_publisher.publish(msg)
+        time.sleep(settle_time)
+        logger.info("go_home: published zeros to /piper/sent_actions (fallback, slave-only)")
     

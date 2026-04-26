@@ -163,11 +163,14 @@ def init_keyboard_listener():
 
     def on_press(key):
         try:
-            if key == keyboard.Key.right:
-                print("Right arrow key pressed. Exiting loop...")
+            # SAVE: right arrow OR 'c' (right pedal)
+            ch = getattr(key, "char", None)
+            if key == keyboard.Key.right or ch == "c":
+                print("SAVE pressed (right arrow / right pedal). Exiting loop...")
                 events["exit_early"] = True
-            elif key == keyboard.Key.left:
-                print("Left arrow key pressed. Exiting loop and rerecord the last episode...")
+            # DISCARD/RERECORD: left arrow OR 'a' (left pedal)
+            elif key == keyboard.Key.left or ch == "a":
+                print("DISCARD pressed (left arrow / left pedal). Exiting loop and rerecord...")
                 events["rerecord_episode"] = True
                 events["exit_early"] = True
             elif key == keyboard.Key.esc:
