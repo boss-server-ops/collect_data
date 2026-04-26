@@ -60,7 +60,7 @@ python3 -m worobot.record \
     --dataset.num_episodes="${NUM_EPISODES}" \
     --dataset.fps=30 \
     --dataset.episode_time_s=60 \
-    --dataset.reset_time_s=10 \
+    --dataset.reset_time_s=0 \
     --dataset.video=true \
     --dataset.push_to_hub=false \
     --display_data=false \

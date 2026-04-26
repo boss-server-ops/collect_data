@@ -232,7 +232,10 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             except Exception as e:
                 logging.warning(f"robot.go_home() failed: {e}")
 
-        if not events["stop_recording"] and (
+        # Reset wait between episodes — only runs if reset_time_s > 0.
+        # When 0, recording advances to the next episode immediately after
+        # go_home() returns (one keypress per episode, no extra wait).
+        if cfg.dataset.reset_time_s > 0 and not events["stop_recording"] and (
             (recorded_episodes < cfg.dataset.num_episodes - 1) or events["rerecord_episode"]
         ):
             log_say("Reset the environment", cfg.play_sounds)
