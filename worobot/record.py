@@ -22,7 +22,13 @@ from lerobot.common.policies.pretrained import PreTrainedPolicy
 
 from .robot import Robot
 from .config import RobotConfig
-from .unix_robot import UnixRobot, UnixRobotConfig
+# UnixRobot pulls in rclpy (ROS2). Import lazily so PiperRobot users don't
+# need ROS2 installed just to record.
+try:
+    from .unix_robot import UnixRobot, UnixRobotConfig  # noqa: F401
+except ImportError as _unix_imp_err:
+    UnixRobot = None
+    UnixRobotConfig = None
 from .utils import make_robot_from_config
 
 from lerobot.common.utils.control_utils import (
