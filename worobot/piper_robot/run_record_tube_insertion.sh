@@ -62,6 +62,8 @@ python3 -m worobot.record \
     --dataset.episode_time_s=60 \
     --dataset.reset_time_s=0 \
     --dataset.video=true \
+    --dataset.num_image_writer_processes=2 \
+    --dataset.num_image_writer_threads_per_camera=4 \
     --dataset.push_to_hub=false \
     --display_data=false \
     --play_sounds=true

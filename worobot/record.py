@@ -211,7 +211,11 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
     listener, events = init_keyboard_listener()
 
     for recorded_episodes in range(cfg.dataset.num_episodes):
-        log_say(f"Recording episode {dataset.num_episodes}", cfg.play_sounds)
+        ep_idx = dataset.num_episodes
+        bar = "=" * 60
+        print(f"\n{bar}\n>>> START episode {ep_idx + 1}/{cfg.dataset.num_episodes} "
+              f"(dataset has {ep_idx} saved so far)\n{bar}", flush=True)
+        log_say(f"Recording episode {ep_idx}", cfg.play_sounds)
         record_loop(
             robot=robot,
             events=events,
@@ -223,6 +227,10 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             display_data=cfg.display_data,
         )
 
+        will_save = not events["rerecord_episode"]
+        print(f">>> Episode {ep_idx + 1} ended ({'SAVE' if will_save else 'DISCARD'}). "
+              f"Homing arms...", flush=True)
+
         # Send master + slave arms to zero if the driver supports it.
         # Runs after BOTH save and discard (kai0-style pedal flow).
         if hasattr(robot, "go_home") and callable(robot.go_home):
@@ -231,6 +239,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
                 robot.go_home()
             except Exception as e:
                 logging.warning(f"robot.go_home() failed: {e}")
+        print(">>> Homing done.", flush=True)
 
         # Reset wait between episodes — only runs if reset_time_s > 0.
         # When 0, recording advances to the next episode immediately after
@@ -249,13 +258,18 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             )
 
         if events["rerecord_episode"]:
+            print(">>> DISCARDED — buffer cleared, re-recording the same episode index next.\n", flush=True)
             log_say("Re-record episode", cfg.play_sounds)
             events["rerecord_episode"] = False
             events["exit_early"] = False
             dataset.clear_episode_buffer()
             continue
+        print(f">>> Saving episode {ep_idx + 1} to disk (image writer queues frames in background)...", flush=True)
+        _save_t0 = time.perf_counter()
 
         dataset.save_episode()
+        print(f">>> SAVED episode {ep_idx + 1} in {time.perf_counter() - _save_t0:.1f}s. "
+              f"Total saved: {dataset.num_episodes}/{cfg.dataset.num_episodes}\n", flush=True)
         if events["stop_recording"]:
             break
 
