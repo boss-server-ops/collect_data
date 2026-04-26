@@ -50,7 +50,7 @@ echo "  Root     : ${DATASET_ROOT}"
 echo "  Prompt   : ${PROMPT}"
 echo "==========================================="
 
-python -m worobot.record \
+python3 -m worobot.record \
     --robot.type=piper_robot \
     --robot.teleop=true \
     --robot.cameras="${CAMERAS_JSON}" \
