@@ -30,9 +30,55 @@ from lerobot.common.errors import DeviceAlreadyConnectedError, DeviceNotConnecte
 
 from ..robot import Robot
 from .config_piper_robot import PiperRobotConfig
-from .kalman_filter import AdaptiveKalmanFilter
 
 logger = logging.getLogger(__name__)
+
+
+class AdaptiveKalmanFilter:
+    """Inline adaptive Kalman filter (matches the original piper_robot.py
+    signature: ``dim, process_variance, measurement_variance, threshold,
+    scale_factor``). The standalone ``kalman_filter.py`` in this package
+    is a separate research demo with a different API; do not import from it
+    here, otherwise its top-level matplotlib code blocks the program.
+    """
+    def __init__(self, dim, process_variance, measurement_variance,
+                 threshold=5.0, scale_factor=10.0):
+        self.dim = dim
+        self.x = np.zeros(dim)
+        self.P = np.ones(dim)
+        self.Q = process_variance * np.eye(dim)
+        self.R = measurement_variance * np.eye(1)
+        self.threshold = threshold
+        self.scale_factor = scale_factor
+        self.prev_measurement = np.zeros(1)
+        self.delta_t = 0.03333
+        self.A = np.array([[1, self.delta_t], [0, 1]])
+
+    def initialize_state_from_measurement(self, initial_measurement):
+        self.x[0] = initial_measurement[0]
+        self.x[1] = 0.0
+        self.P = np.array([0.1, 0.1])
+        self.prev_measurement[0] = initial_measurement[0]
+
+    def predict(self):
+        self.x = self.A @ self.x
+        self.P = self.A @ self.P @ self.A.T + self.Q
+
+    def update(self, measurement):
+        delta = np.abs(measurement - self.prev_measurement)
+        if np.any(delta > self.threshold):
+            self.R = self.scale_factor * np.eye(1)
+        else:
+            self.R = 7.5 * np.eye(1)
+
+        H = np.array([[1, 0]])
+        S = H @ self.P @ H.T + self.R
+        K = self.P @ H.T @ np.linalg.inv(S)
+        y = measurement - H @ self.x
+        self.x += K @ y
+        self.P = (np.eye(self.dim) - K @ H) @ self.P
+        self.prev_measurement = measurement
+        return self.x
 
 
 # Topic / service names (match kai0 ROS1 setup — do not change).
