@@ -65,7 +65,7 @@ python3 -m worobot.record \
     --dataset.single_task="${PROMPT}" \
     --dataset.num_episodes="${NUM_EPISODES}" \
     --dataset.fps=30 \
-    --dataset.episode_time_s=60 \
+    --dataset.episode_time_s=0 \
     --dataset.reset_time_s=0 \
     --dataset.video=true \
     --dataset.num_image_writer_processes=2 \

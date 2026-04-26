@@ -108,9 +108,12 @@ def record_loop(
     if policy is not None:
         policy.reset()
 
+    # control_time_s <= 0 (or None) means "no automatic timeout" — only an
+    # exit_early event (save / discard / Esc) ends the loop.
+    no_timeout = control_time_s is None or control_time_s <= 0
     timestamp = 0
     start_episode_t = time.perf_counter()
-    while timestamp < control_time_s:
+    while no_timeout or timestamp < control_time_s:
         # logging.info(f"Recording loop at {timestamp:.2f}s")
         start_loop_t = time.perf_counter()
         if events["exit_early"]:
