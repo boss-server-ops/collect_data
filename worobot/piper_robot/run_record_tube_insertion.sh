@@ -22,9 +22,15 @@
 
 set -euo pipefail
 
-DATASET_REPO_ID="${1:-heart666888/tube_insertion_v2_$(date +%m%d)}"
-NUM_EPISODES="${2:-200}"
+DATASET_REPO_ID="${1:-heart666888/tube_insertion_v2_$(date +%m%d_%H%M)}"
+# Default 9999: just press Esc to stop after you've recorded enough.
+NUM_EPISODES="${2:-9999}"
 DATASET_ROOT="${DATASET_ROOT:-$HOME/data/${DATASET_REPO_ID//\//_}}"
+
+if [ -d "${DATASET_ROOT}" ]; then
+    echo "Warning: ${DATASET_ROOT} already exists. Pass a fresh repo_id (arg 1) or rm -rf it first."
+    exit 1
+fi
 
 PROMPT="Pick up the test tube from the conveyor belt and insert it into the test tube rack."
 
