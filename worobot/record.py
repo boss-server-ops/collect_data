@@ -6,11 +6,8 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from pprint import pformat
-import threading
 
 import numpy as np
-import rclpy
-from rclpy.node import Node
 
 import rerun as rr
 
@@ -169,23 +166,13 @@ def record_loop(
 
 @parser.wrap()
 def record(cfg: RecordConfig) -> LeRobotDataset:
-    rclpy.init()  # ✅ 初始化 ROS 2
-
     init_logging()
     logging.info(pformat(asdict(cfg)))
     if cfg.display_data:
         _init_rerun(session_name="recording")
 
     robot = make_robot_from_config(cfg.robot)
-
-    # ✅ 若是 ROS 2 节点，创建 executor 并启动 spin
-    executor = None
-    spin_thread = None
-    if isinstance(robot, Node):
-        executor = rclpy.executors.MultiThreadedExecutor()
-        executor.add_node(robot)
-        spin_thread = threading.Thread(target=executor.spin, daemon=True)
-        spin_thread.start()
+    # rospy callbacks fire on its own background threads — no manual spin needed.
 
     action_features = hw_to_dataset_features(robot.action_features, "action", cfg.dataset.video)
     obs_features = hw_to_dataset_features(robot.observation_features, "observation", cfg.dataset.video)
@@ -266,11 +253,6 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
     log_say("Stop recording", cfg.play_sounds, blocking=True)
 
     robot.disconnect()
-
-    if executor is not None:
-        executor.shutdown()
-        executor.remove_node(robot)
-        rclpy.shutdown()
 
     if not is_headless() and listener is not None:
         listener.stop()

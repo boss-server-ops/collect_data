@@ -28,7 +28,7 @@ The woan stack handles both correctly:
 
 | File | Change |
 |---|---|
-| `worobot/piper_robot/piper_robot.py` | Added `go_home()` — calls ROS2 service `/can_{left,right}/go_zero_master_slave` (Trigger), restores master-slave coupling, falls back to publishing zero JointState. |
+| `worobot/piper_robot/piper_robot.py` | Rewritten on **ROS1 (rospy)** — subscribes to kai0 topics `/master/joint_{left,right}` (action) and `/puppet/joint_{left,right}` (state); publishes back on `/master/joint_*` only in non-teleop mode (replay/inference). Added `go_home()` calling `/can_{left,right}/go_zero_master_slave` + `restore_ms_mode` (`std_srvs/Trigger`). |
 | `lerobot/common/utils/control_utils.py` | Keyboard listener now also accepts `c` (right pedal → SAVE) and `a` (left pedal → DISCARD/rerecord). Arrow keys still work. |
 | `worobot/record.py` | After every episode (save **or** discard), automatically calls `robot.go_home()` before entering the reset wait. |
 
@@ -46,18 +46,27 @@ same deployment `camera_map` works for fold, tube, and cup_block models.
 | `left`  | left arm wrist (kai0 `cam_left_wrist`) | `233722071228` |
 | `right` | right arm wrist (kai0 `cam_right_wrist`) | `233622073364` |
 
-## ROS2 prerequisites
+## ROS1 prerequisites
 
-The PiperRobot subscribes to `/piper/recorded_joint_actions_states` and uses
-services `/can_{left,right}/go_zero_master_slave` and
-`/can_{left,right}/restore_ms_mode`. Make sure your ROS2 piper bringup
-publishes/serves these. (Service type: `std_srvs/Trigger`.)
+This project uses ROS1 (rospy) and connects directly to the kai0 piper
+master-slave nodes that you already have running. Required topics/services:
+
+| Topic / Service | Direction | Purpose |
+|---|---|---|
+| `/master/joint_left`, `/master/joint_right` (`sensor_msgs/JointState`) | sub (record) / pub (replay) | action source (teleop master arm command) |
+| `/puppet/joint_left`, `/puppet/joint_right` (`sensor_msgs/JointState`) | sub | state source (slave actual joint position) |
+| `/can_{left,right}/go_zero_master_slave` (`std_srvs/Trigger`) | call | per-episode auto-homing |
+| `/can_{left,right}/restore_ms_mode` (`std_srvs/Trigger`) | call | restore master-slave coupling after homing |
+
+Just bring up the kai0 piper master-slave node the same way you used to
+record before; no ROS2 packages are needed.
 
 ## Usage
 
 ```bash
-# 1. ROS2 piper bringup must be running first.
-ros2 launch <your_piper_pkg> bringup.launch.py
+# 1. roscore + your kai0 piper master-slave node must be running.
+roscore &
+# (start your existing kai0 piper bringup, e.g. piper_start_ms_node, however you used to)
 
 # 2. Start recording.
 bash worobot/piper_robot/run_record_tube_insertion.sh \
