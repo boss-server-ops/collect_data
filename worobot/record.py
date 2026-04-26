@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 
 import logging
+import threading
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -101,10 +102,11 @@ def record_loop(
     control_time_s: int | None = None,
     single_task: str | None = None,
     display_data: bool = False,
+    ignore_events: bool = False,
 ):
     if dataset and dataset.fps != fps:
         raise ValueError(f"The dataset fps should be equal to requested fps ({dataset.fps} != {fps}).")
-    
+
     if policy is not None:
         policy.reset()
 
@@ -116,7 +118,9 @@ def record_loop(
     while no_timeout or timestamp < control_time_s:
         # logging.info(f"Recording loop at {timestamp:.2f}s")
         start_loop_t = time.perf_counter()
-        if events["exit_early"]:
+        # During the post-demo homing phase we ignore key events so that
+        # the human can keep pressing keys without interrupting the homing tail.
+        if not ignore_events and events["exit_early"]:
             events["exit_early"] = False
             break
 
@@ -234,14 +238,37 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
         print(f">>> Episode {ep_idx + 1} ended ({'SAVE' if will_save else 'DISCARD'}). "
               f"Homing arms...", flush=True)
 
-        # Send master + slave arms to zero if the driver supports it.
-        # Runs after BOTH save and discard (kai0-style pedal flow).
+        # Trigger go_home. On SAVE we keep the recording loop running while
+        # arms return to zero, so the homing motion is captured as the tail
+        # of the saved episode. On DISCARD we just home (no recording).
+        homing_record_s = 5.0  # seconds of homing motion to capture (>= robot's settle_time)
         if hasattr(robot, "go_home") and callable(robot.go_home):
-            log_say("Robot homing", cfg.play_sounds)
-            try:
-                robot.go_home()
-            except Exception as e:
-                logging.warning(f"robot.go_home() failed: {e}")
+            if will_save and not events["stop_recording"] and dataset is not None:
+                log_say("Robot homing (recording tail)", cfg.play_sounds)
+                home_thread = threading.Thread(
+                    target=lambda: robot.go_home(), daemon=True,
+                )
+                home_thread.start()
+                # keep recording frames during homing; ignore_events=True so
+                # accidental keypresses during homing don't cut it short.
+                record_loop(
+                    robot=robot,
+                    events=events,
+                    fps=cfg.dataset.fps,
+                    policy=policy,
+                    dataset=dataset,
+                    control_time_s=homing_record_s,
+                    single_task=cfg.dataset.single_task,
+                    display_data=cfg.display_data,
+                    ignore_events=True,
+                )
+                home_thread.join(timeout=10)
+            else:
+                log_say("Robot homing", cfg.play_sounds)
+                try:
+                    robot.go_home()
+                except Exception as e:
+                    logging.warning(f"robot.go_home() failed: {e}")
         print(">>> Homing done.", flush=True)
 
         # Reset wait between episodes — only runs if reset_time_s > 0.
