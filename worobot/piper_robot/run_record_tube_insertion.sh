@@ -73,3 +73,21 @@ python3 -m worobot.record \
     --dataset.push_to_hub=false \
     --display_data=false \
     --play_sounds=true
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+echo ""
+echo "==========================================="
+echo "  Recording finished. Encoding images -> mp4..."
+echo "  Dataset root: ${DATASET_ROOT}"
+echo "==========================================="
+python3 "${REPO_ROOT}/convert_lerobot_imgs2videos_multi_threads.py" \
+    --dataset_root "${DATASET_ROOT}" \
+    --fps 30 \
+    --num_workers 12
+
+echo ""
+echo "==========================================="
+echo "  Done. Videos at ${DATASET_ROOT}/videos/chunk-000/"
+echo "  You can now optionally upload to HF:"
+echo "    huggingface-cli upload ${DATASET_REPO_ID} ${DATASET_ROOT} . --repo-type=dataset"
+echo "==========================================="
