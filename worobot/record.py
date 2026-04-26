@@ -264,14 +264,18 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             events["exit_early"] = False
             dataset.clear_episode_buffer()
             continue
+
+        # Esc was pressed mid-episode: drop the in-progress buffer and exit.
+        if events["stop_recording"]:
+            print(">>> Esc pressed — discarding in-progress episode buffer and stopping.\n", flush=True)
+            dataset.clear_episode_buffer()
+            break
+
         print(f">>> Saving episode {ep_idx + 1} to disk (image writer queues frames in background)...", flush=True)
         _save_t0 = time.perf_counter()
-
         dataset.save_episode()
         print(f">>> SAVED episode {ep_idx + 1} in {time.perf_counter() - _save_t0:.1f}s. "
               f"Total saved: {dataset.num_episodes}/{cfg.dataset.num_episodes}\n", flush=True)
-        if events["stop_recording"]:
-            break
 
     log_say("Stop recording", cfg.play_sounds, blocking=True)
 
