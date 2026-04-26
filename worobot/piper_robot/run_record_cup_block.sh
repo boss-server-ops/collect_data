@@ -38,9 +38,12 @@ PROMPT="Place the cup on the conveyor belt and toss the yellow block into the cu
 # Camera key names match fold_clothes_data167 schema: head/left/right
 # (no "top_" or "hand_" prefix), so trained models share the same camera_map
 # at deployment.
-SN_HEAD=233622079256   # front overhead (was "cam_high" in kai0)
-SN_LEFT=233722071228   # left arm wrist (was "cam_left_wrist" in kai0)
-SN_RIGHT=233622073364  # right arm wrist (was "cam_right_wrist" in kai0)
+SN_HEAD=233622079256   # front overhead
+# Physical-vs-label correction (mirrors the topic swap in piper_robot.py):
+# the camera that kai0 calls cam_left_wrist (SN 233722071228) is physically
+# mounted on the RIGHT arm wrist on this rig, and vice versa.
+SN_LEFT=233622073364   # physically left arm wrist (kai0 named it cam_right_wrist)
+SN_RIGHT=233722071228  # physically right arm wrist (kai0 named it cam_left_wrist)
 
 # Build cameras dict for tyro CLI
 CAMERAS_JSON="{

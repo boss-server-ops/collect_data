@@ -81,11 +81,26 @@ class AdaptiveKalmanFilter:
         return self.x
 
 
-# Topic / service names (match kai0 ROS1 setup — do not change).
-MASTER_LEFT_TOPIC = "/master/joint_left"
-MASTER_RIGHT_TOPIC = "/master/joint_right"
-PUPPET_LEFT_TOPIC = "/puppet/joint_left"
-PUPPET_RIGHT_TOPIC = "/puppet/joint_right"
+# Topic / service names.
+#
+# IMPORTANT — physical-vs-label correction.
+# On this rig, the kai0 ROS topics named `/master/joint_left` and
+# `/puppet/joint_left` are physically wired to the operator/robot's RIGHT arm
+# (and vice versa). Recording datasets without correcting this produces
+# left/right-flipped data that requires a deployment-time swap.
+#
+# Fix at the source: cross-wire the topic names below so that LEFT_MOTORS
+# (which become action[0:7] / state[0:7] in the dataset) actually carry the
+# physical LEFT arm's joints. Result: datasets match the standard fold
+# convention out of the box and need no swap at deploy time.
+#
+# If you ever fix the underlying ROS bringup so /master/joint_left really is
+# the physical left arm, just swap the two MASTER and the two PUPPET strings
+# back to the literal names.
+MASTER_LEFT_TOPIC = "/master/joint_right"   # physically left arm
+MASTER_RIGHT_TOPIC = "/master/joint_left"   # physically right arm
+PUPPET_LEFT_TOPIC = "/puppet/joint_right"   # physically left arm
+PUPPET_RIGHT_TOPIC = "/puppet/joint_left"   # physically right arm
 GO_ZERO_SERVICES = ("/can_left/go_zero_master_slave", "/can_right/go_zero_master_slave")
 RESTORE_MS_SERVICES = ("/can_left/restore_ms_mode", "/can_right/restore_ms_mode")
 
