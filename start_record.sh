@@ -1,0 +1,13 @@
+python -m worobot.record \
+--robot.type piper_robot \
+--robot.id my_piper_robot \
+--robot.cameras '{ head: {type: intelrealsense, serial_number_or_name: 145422070549, width: 640, height: 480, fps: 30}, left: {type: intelrealsense, serial_number_or_name: 140122076252, width: 640, height: 480, fps: 30}, right: {type: intelrealsense, serial_number_or_name: 141722073617, width: 640, height: 480, fps: 30}}' \
+--robot.teleop true \
+--dataset.repo_id ${HF_USER}/x1-test \
+--dataset.single_task "pick up the clothes " \
+--dataset.root dataset/x1_subtask3_v1_2026011902/ \
+--dataset.num_episodes 100 \
+--dataset.push_to_hub false \
+--display_data false \
+--play_sounds true \
+--resume true # 第一次创建数据集时，需要设置为false
