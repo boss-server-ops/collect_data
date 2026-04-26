@@ -59,14 +59,17 @@ master-slave nodes that you already have running. Required topics/services:
 | `/can_{left,right}/restore_ms_mode` (`std_srvs/Trigger`) | call | restore master-slave coupling after homing |
 
 Just bring up the kai0 piper master-slave node the same way you used to
-record before; no ROS2 packages are needed.
+record before; no ROS2 packages are needed. **Cameras are NOT started via
+ROS** — the woan record script opens RealSense devices directly via the
+Python SDK using the serials baked into `run_record_tube_insertion.sh`.
 
 ## Usage
 
 ```bash
-# 1. roscore + your kai0 piper master-slave node must be running.
+# 1. roscore + your kai0 piper master-slave node (the same one you've used).
 roscore &
-# (start your existing kai0 piper bringup, e.g. piper_start_ms_node, however you used to)
+bash ~/kai0/train_deploy_alignment/dagger/agilex/tube_insertion/1_start_piper.sh
+# (no separate camera node — they are opened by the record script itself)
 
 # 2. Start recording.
 bash worobot/piper_robot/run_record_tube_insertion.sh \
